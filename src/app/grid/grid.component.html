@@ -1,0 +1,166 @@
+<div class="header" style="align-items: end;">
+    <img class="logo" src="../../assets/wurknow.png">
+    <div class="header-text">
+      {{title}}</div>
+      
+      <kendo-textbox placeholder="Enter report title here" [clearButton]="true" [(value)]="title" style="min-width: 400px; margin-left: 5px;">
+      </kendo-textbox>
+</div>
+
+<div class="address">
+  <div class="for">
+    <p>
+        hello@wurknow.com<br />
+        4187 Flat Rock Road, Suit 350,<br />
+        Riverside, CA 92505
+    </p>
+  </div>
+
+</div>
+
+<kendo-grid #grid [reorderable]="true" [columnMenu]="true" [resizable]="true" [height]="750" [data]="gridSettings.gridData!" [pageSize]="18" [skip]="gridSettings.state.skip!" [sort]="gridSettings.state.sort!"
+      [filter]="gridSettings.state.filter!" [group]="gridSettings.state.group!" [groupable]="true"  [sortable]="true" [pageable]="true" filterable="menu" [resizable]="true" [reorderable]="true"
+      [columnMenu]="true" (dataStateChange)="dataStateChange($event)">
+    <ng-template kendoGridToolbarTemplate>
+        <label>Select paper size:</label>
+        <select [(ngModel)]="paperSize">
+          <option value="auto">Auto</option>
+          <option value="A1">A1</option>
+          <option value="A2">A2</option>
+          <option value="A4">A4</option>
+        </select>
+
+        <button kendoGridPDFCommand icon="file-pdf" style="margin-left: 5px;">Export to PDF</button>
+        <button type="button" kendoGridExcelCommand icon="file-excel" style="margin-left: 5px;"> Export to Excel </button>
+        <button type="button" icon="file-save" style="margin-left: 5px;" class="k-button" (click)="saveGridSettings(grid)">Save Template</button>
+        <button type="button" icon="file-save" style="margin-left: 5px;" class="k-button" *ngIf="savedStateExists" (click)="gridSettings = mapGridSettings(persistingService.get('gridSettings'))">Load Template</button>
+    </ng-template>
+    <kendo-grid-column *ngFor="let col of gridSettings.columnsConfig"
+      [field]="col.field!"
+      [title]="col.title!"
+      [width]="col.width!"
+      [filterable]="col.filterable!"
+      [hidden]="col.field == 'id'? true : col.hidden!"
+      [format]="col.format!">     
+      <ng-template kendoGridGroupHeaderTemplate let-group let-field="field" let-value="value">
+          <strong>{{col.title | titlecase}}</strong>: {{value}} 
+      </ng-template>
+
+      <ng-template kendoGridHeaderTemplate let-column>
+        {{ column.title }}
+
+        <ng-template [ngIf]="column.field == 'budget'">          
+          <button kendoButton icon="sum" #anchor (click)="onToggle()"></button>
+          <kendo-popup
+            [anchor]="{ nativeElement: anchor }"
+            (anchorViewportLeave)="show = true"
+            *ngIf="show"
+          >
+            <div class="content-agg">
+              <button style="margin-bottom: 10px;" kendoButton (click)="selectAll()">Select All</button>
+              <hr>
+              <ul class="no-paddings">
+                <ng-container *ngFor="let aggregate of aggregatesOpts">
+                  <ol *ngIf="checkAggregateOption(aggregate, col.filter)" class="no-paddings">
+                    <input
+                      type="checkbox"
+                      (input)="onCheckBoxChange(aggregate.text, $event)"
+                      kendoCheckBox
+                      #checkbox
+                      [(ngModel)]="aggregate.selected"
+                    />
+                    <kendo-label
+                      [for]="checkbox"
+                      [text]="aggregate.display"
+                    ></kendo-label>
+                  </ol>
+                </ng-container>
+              </ul>
+              <hr>
+              <div style="margin-top: 10px;">
+                <button kendoButton (click)="removeAll()">Remove All</button>
+                <button kendoButton [primary]="true" (click)="apply()">
+                  Apply
+                </button>
+              </div>
+            </div>
+          </kendo-popup>
+        </ng-template>
+      </ng-template>
+
+      <ng-template kendoGridFooterTemplate let-column>
+        <p *ngIf="column.field == 'budget' && isSum ">Sum: {{ this.calcSum(column.field) }}</p>
+        <p *ngIf="column.field == 'budget' && isAvg ">Avg: {{ this.calcAvg(column.field) }}</p>
+        <p *ngIf="column.field == 'budget' && isCount ">Count: {{ this.calcCount(column.field) }}</p>
+      </ng-template>
+    </kendo-grid-column>
+    <kendo-grid-pdf  fileName="Attendance.pdf"
+          [allPages]="true"
+          [paperSize] = "paperSize"
+          [repeatHeaders]="true"
+          forcePageBreak=".k-grouping-row:not(:first-child)">
+        <kendo-grid-pdf-margin top="5cm" left="1cm" right="1cm" bottom="1cm" ></kendo-grid-pdf-margin>
+        <ng-template  kendoGridPDFTemplate let-pageNum="pageNum" let-totalPages="totalPages">
+            <div class="page-template">
+              <div class="header">                  
+                <div style="align-items: end;">
+                  <img class="logo" src="../../assets/wurknow.png">
+                </div>
+                
+                <div class="address">
+                  <div class="for">                    
+                    <div class="header-text">
+                      {{title}}
+                    </div>
+                  </div>
+                  <div class="footer">Page {{ pageNum }} of {{ totalPages }}</div>
+                </div>
+              </div>
+            </div>
+        </ng-template>
+      </kendo-grid-pdf>
+      <kendo-grid-excel fileName="Attendance.xlsx" [fetchData]="allData"></kendo-grid-excel>
+      </kendo-grid>
+
+<style>
+    .header{
+        display: inline-flex;
+        margin-top: 20px;
+    } 
+    
+    .logo{
+        width: 230px;
+        margin-right: 30px;
+    }
+
+    .header-text{
+      font-size: 30px;
+      font-weight: bold;
+      margin: 0 0 20px 0;
+      border-bottom: 1px solid #e5e5e5;
+      color: #3aabf0;
+    }
+
+    .address {
+        display: flex;
+        justify-content: space-between;
+        margin: 0 0 20px 0;
+    }
+
+    .from p, .for p {
+      color: #787878;
+    }
+
+    .signature {
+      padding-top: 36px;
+    }
+    .content-agg {
+      padding: 10px;
+      color: #787878;
+      border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    .no-paddings {
+      margin: 0;
+      padding: 0;
+    }
+</style>
